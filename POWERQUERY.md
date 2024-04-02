@@ -5,7 +5,7 @@
  * [GENERAL](#GENERAL)
  * [MBIE](#MBIE)
  * [MARITIME](#MARITIME)
-
+ * [MOE](#MOE)
  
 
 
@@ -1055,3 +1055,87 @@ let
 in
     #"Sorted Rows"
 ```
+
+# MOE
+###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
+-------------------------
+
+### REST API CALL
+
+```VBA
+let 
+    BaseUrl = https://education-nz.atlassian.net/rest/api/3/search?jql=project in ('has'),
+
+
+    Credentials = scott.phillips@education.govt.nz:ATATT3xFfGF0arW etc,
+
+    JiraIDPerPage = 100,
+
+    GetJson = (Url) =>
+        let 
+            RawData = Web.Contents(Url),
+            Json    = Json.Document(RawData)
+        in  Json,
+
+    GetJiraIDCount = () =>
+        let Url   = BaseUrl & "&maxResults=0",
+            Json  = GetJson(Url),
+            Count = Json[#"total"]
+        in  Count,
+
+    GetPage = (Index) =>
+        let Skip  = "&startAt=" & Text.From(Index * JiraIDPerPage),
+            Top   = "&maxResults=" & Text.From(JiraIDPerPage),
+            Url   = BaseUrl & Skip & Top,
+            Json  = GetJson(Url),
+            Value = Json[#"issues"]
+        in  Value,
+
+    JiraIDCount = List.Max({ JiraIDPerPage, GetJiraIDCount() }),
+    PageCount   = Number.RoundUp(JiraIDCount / JiraIDPerPage),
+    PageIndices = { 0 .. PageCount - 1 },
+    Pages       = List.Transform(PageIndices, each GetPage(_)),
+    JiraID    = List.Union(Pages),
+    Table       = Table.FromList(JiraID, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    Renamed = Table.RenameColumns(Table,{{"Column1", "issues"}}),
+    Expanded = Table.ExpandRecordColumn(Renamed, "issues", {"id", "key", "fields"}),
+```
+### SIMPLE REST API CALL
+
+```VBA
+
+let
+    apiUrl = https://api.example.com/data,
+    accessToken = "your_access_token_here",
+    headers = [#"Authorization" = "Bearer " & accessToken],
+    apiResponse = Web.Contents(apiUrl, [Headers=headers]),
+    apiTable = Json.Document(apiResponse)
+in
+    apiTable
+```
+
+### LIST GENERATE API CALL
+
+```VBA
+
+= (startAt as number) as list  =>
+let StartURL = "HTTPS://education-nz.atlassian.net/rest/api/3/search?jql=project=HAS&maxResults=100&startAt=",
+source = Json.Document(Web.Contents( StartURL & Number.ToText(startAt) )) [issues] 
+in  source
+
+------
+
+let ListGenerate = List.Generate( () =>
+       [Result= try GetDataListRecordToTable(1) otherwise null, startAt = 0], 
+       each not List.IsEmpty([Result]),
+       each [Result = try GetDataListRecordToTable([startAt]+100) otherwise null, 
+       startAt =[startAt]+100], each [Result]),
+
+    ToTable = Table.Buffer(Table.FromList(ListGenerate, Splitter.SplitByNothing(), null, null, ExtraValues.Error)),
+    ExpandTable = Table.ExpandListColumn(ToTable, "Column1")
+in expand table
+
+```
+
+
+
