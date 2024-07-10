@@ -1150,3 +1150,9 @@ Splitter.SplitByNothing(), null, null, ExtraValues.Error),
 in
     #"Added Custom"
 ```
+
+### GENERAL
+
+###### CUMULATIVE
+Add index
+List.Sum(List.FirstN(Added_Index[CREATED],[Index])))
