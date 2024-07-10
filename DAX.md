@@ -467,3 +467,56 @@ SUBTOTAL
 ```
 =IF ( not ( isfiltered ( TABLE[CRM] ) ) ,  [CALC PERC] , COUNT([Customer Number] )  )
 ```
+
+
+
+#### DATE TABLE 
+```VBA
+Date = 
+//************** Script developed by RADACAD - edition: July 2021 
+//************** set the variables below for your custom date table setting 
+var _fromYear=2021 // set the start year of the date dimension. dates start from 1st of January of this year
+var _toYear=2022   // set the end year of the date dimension. dates end at 31st of December of this year
+var _startOfFiscalYear=7 // set the month number that is start of the financial year. example; if fiscal year start is July, value is 7
+//************** 
+var _today=TODAY()
+return
+ADDCOLUMNS(
+    CALENDAR(
+                DATE(_fromYear,1,1),
+                DATE(_toYear,12,31)
+),
+"Year",YEAR([Date]),
+"Start of Year",DATE( YEAR([Date]),1,1),
+"End of Year",DATE( YEAR([Date]),12,31),
+"Month",MONTH([Date]),
+"Start of Month",DATE( YEAR([Date]), MONTH([Date]), 1),
+"End of Month",EOMONTH([Date],0),
+"Days in Month",DATEDIFF(DATE( YEAR([Date]), MONTH([Date]), 1),EOMONTH([Date],0),DAY)+1,
+"Year Month Number",INT(FORMAT([Date],"YYYYMM")),
+"Year Month Name",FORMAT([Date],"YYYY-MMM"),
+"Day",DAY([Date]),
+"Day Name",FORMAT([Date],"DDDD"),
+"Day Name Short",FORMAT([Date],"DDD"),
+"Day of Week",WEEKDAY([Date]),
+"Day of Year",DATEDIFF(DATE( YEAR([Date]), 1, 1),[Date],DAY)+1,
+"Month Name",FORMAT([Date],"MMMM"),
+"Month Name Short",FORMAT([Date],"MMM"),
+"Quarter",QUARTER([Date]),
+"Quarter Name","Q"&FORMAT([Date],"Q"),
+"Year Quarter Number",INT(FORMAT([Date],"YYYYQ")),
+"Year Quarter Name",FORMAT([Date],"YYYY")&" Q"&FORMAT([Date],"Q"),
+"Start of Quarter",DATE( YEAR([Date]), (QUARTER([Date])*3)-2, 1),
+"End of Quarter",EOMONTH(DATE( YEAR([Date]), QUARTER([Date])*3, 1),0),
+"Week of Year",WEEKNUM([Date]),
+"Start of Week", [Date]-WEEKDAY([Date])+1,
+"End of Week",[Date]+7-WEEKDAY([Date]),
+"Fiscal Year",if(_startOfFiscalYear=1,YEAR([Date]),YEAR([Date])+ QUOTIENT(MONTH([Date])+ (13-_startOfFiscalYear),13)),
+"Fiscal Quarter",QUARTER( DATE( YEAR([Date]),MOD( MONTH([Date])+ (13-_startOfFiscalYear) -1 ,12) +1,1) ),
+"Fiscal Month",MOD( MONTH([Date])+ (13-_startOfFiscalYear) -1 ,12) +1,
+"Day Offset",DATEDIFF(_today,[Date],DAY),
+"Month Offset",DATEDIFF(_today,[Date],MONTH),
+"Quarter Offset",DATEDIFF(_today,[Date],QUARTER),
+"Year Offset",DATEDIFF(_today,[Date],YEAR)
+)
+```
