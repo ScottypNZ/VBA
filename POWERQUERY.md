@@ -1137,5 +1137,16 @@ in expand table
 
 ```
 
+### DATE TABLE
 
+```VBA
 
+let
+    Source = Table.FromList(
+List.Dates(#date( 2022, 1, 1 ),1095,#duration( 1, 0, 0, 0 )),
+Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Renamed Columns" = Table.RenameColumns(Source,{{"Column1", "DAY"}}),
+    #"Added Custom" = Table.AddColumn(#"Renamed Columns", "MONTH", each Text.From(Date.Year([DAY]))&"/"&Text.PadStart(Text.From(Date.Month([DAY])),2,"0"))
+in
+    #"Added Custom"
+```
