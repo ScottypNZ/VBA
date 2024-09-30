@@ -4,6 +4,7 @@
 
  * [GENERAL](#GENERAL)
  * [MOE](#MOE)
+ * [DATE TABLE](#DATE TABLE)
  
 # GENERAL
 ###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
@@ -1137,12 +1138,49 @@ _Tenure Group = if('All Staff'[_Tenure]<1,"0 - 1 year", if(and('All Staff'[_Tenu
 _Tenure_leavers = if('Exits'[_Tenure]<1, "0 - 1 year", if(and('Exits'[_Tenure]>=1, 'Exits'[_Tenure]<2), "1 - 2 years", if(and('Exits'[_Tenure]>=2, 'Exits'[_Tenure]<5), "2 - 5 years",  if(and('Exits'[_Tenure]>=5,'Exits'[_Tenure]<10), "5 - 10 years", "More than 10 years"))))
 ```
 
-```vba
 
+# DATE TABLE
+```vba
+ Date = 
+//************** Script developed by RADACAD - edition: July 2021 
+//************** set the variables below for your custom date table setting 
+var _fromYear=2022 // set the start year of the date dimension. dates start from 1st of January of this year
+var _toYear=2025   // set the end year of the date dimension. dates end at 31st of December of this year
+var _startOfFiscalYear=7 // set the month number that is start of the financial year. example; if fiscal year start is July, value is 7
+//************** 
+var _today=TODAY()
+return
+ADDCOLUMNS(
+    CALENDAR(
+                DATE(_fromYear,1,1),
+                DATE(_toYear,12,31)
+),
+"Year",YEAR([Date]),
+"Start of Year",DATE( YEAR([Date]),1,1),
+"End of Year",DATE( YEAR([Date]),12,31),
+
+"Start of Month",DATE( YEAR([Date]), MONTH([Date]), 1),
+"End of Month",EOMONTH([Date],0),
+
+"Year Month Number",FORMAT([Date],"YYYY/MM"),
+"Year Month Name",FORMAT([Date],"YYYY-MMM"),
+
+"Day Name",FORMAT([Date],"DDDD"),
+"Day Name Short",FORMAT([Date],"DDD"),
+
+"Month Name",FORMAT([Date],"MMMM"),
+"Month Name Short",FORMAT([Date],"MMM"),
+"Start of Week", [Date]-WEEKDAY([Date])+1,
+"End of Week",[Date]+7-WEEKDAY([Date]),
+
+"Month",MONTH([Date]),
+"Day",DAY([Date]),
+"Day of Week",WEEKDAY([Date]),
+"Day of Year",DATEDIFF(DATE( YEAR([Date]), 1, 1),[Date],DAY)+1,
+"Week of Year",WEEKNUM([Date]),
+"Days in Month",DATEDIFF(DATE( YEAR([Date]), MONTH([Date]), 1),EOMONTH([Date],0),DAY)+1
+)
 ```
 
-```vba
-
-```
 
 
