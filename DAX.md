@@ -4,7 +4,7 @@
 
  * [GENERAL](#GENERAL)
  * [MOE](#MOE)
- * [DATE TABLE](#DATE TABLE)
+ * [DATE](#DATE)
  
 # GENERAL
 ###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
