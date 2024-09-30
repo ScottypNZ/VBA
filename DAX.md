@@ -1139,7 +1139,11 @@ _Tenure_leavers = if('Exits'[_Tenure]<1, "0 - 1 year", if(and('Exits'[_Tenure]>=
 ```
 
 
-# DATE TABLE
+# DATE
+
+###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
+-------------------------
+
 ```vba
  Date = 
 //************** Script developed by RADACAD - edition: July 2021 
