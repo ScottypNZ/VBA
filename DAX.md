@@ -1095,6 +1095,10 @@ CALCULATE(
 #### MAORI Capability
 
 ```vba
+_Rehire = if('Exits'[Hire Date]>'Exits'[Last Date Worked],"Rehire","")
+```
+
+```vba
 _EmployeeType = 
 if ( 'All Staff'[Employee Type] = "Casual", "Casual",
 if ( 'All Staff'[Employee Type] = "Contractor - Backfill OPEX", "Contractor",
@@ -1136,6 +1140,50 @@ _Tenure Group = if('All Staff'[_Tenure]<1,"0 - 1 year", if(and('All Staff'[_Tenu
 
 ```vba
 _Tenure_leavers = if('Exits'[_Tenure]<1, "0 - 1 year", if(and('Exits'[_Tenure]>=1, 'Exits'[_Tenure]<2), "1 - 2 years", if(and('Exits'[_Tenure]>=2, 'Exits'[_Tenure]<5), "2 - 5 years",  if(and('Exits'[_Tenure]>=5,'Exits'[_Tenure]<10), "5 - 10 years", "More than 10 years"))))
+```
+
+##### CUMULATIVE
+
+```vba
+_WEEKLY OPEN = [_WEEKLY CREATED running] - [_WEEKLY RESOLVED running]
+```
+
+```vba
+_WEEKLY CREATED running = 
+CALCULATE(
+	SUM('_PIVOT'[CREATED]),
+	FILTER(
+		ALLSELECTED('_PIVOT'[WEEK]),
+		ISONORAFTER('_PIVOT'[WEEK], MAX('_PIVOT'[WEEK]), DESC)
+	)
+)
+```
+
+```vba
+_WEEKLY RESOLVED running = 
+CALCULATE(
+	SUM('_PIVOT'[RESOLVED]),
+	FILTER(
+		ALLSELECTED('_PIVOT'[WEEK]),
+		ISONORAFTER('_PIVOT'[WEEK], MAX('_PIVOT'[WEEK]), DESC)
+	)
+)
+```
+
+```vba
+_DAY CREATED = 
+
+CALCULATE(
+	SUM('_PIVOT'[CREATED]),
+	FILTER(
+		ALLSELECTED('_PIVOT'[Date]),
+		ISONORAFTER('_PIVOT'[Date], MAX('_PIVOT'[Date]), DESC)
+	)
+)
+```
+
+```vba
+
 ```
 
 
