@@ -6,6 +6,7 @@
  * [MBIE](#MBIE)
  * [MARITIME](#MARITIME)
  * [MOE](#MOE)
+ * [JIRA](#JIRA)
  
 
 
@@ -17,7 +18,13 @@
 ###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
 -------------------------
 
-LINKS 
+
+
+###### CUMULATIVE
+Add index
+List.Sum(List.FirstN(Added_Index[CREATED],[Index])))
+
+##### LINKS 
 https://opdhsblobprod04-secondary.blob.core.windows.net/contents/9b520b3cc93e43f7ba25a428fd5605f4/b10c45193088c620dcde2762fc236c51?sv=2018-03-28&sr=b&si=ReadPolicy&sig=ujmH19rSqr0MgAy4GPoNrFQymGs4im8K19miED2HgCs%3D&st=2021-07-25T04%3A57%3A19Z&se=2021-07-26T05%3A07%3A19Z
 
 https://www.excelguru.ca/blog/2014/08/20/5-very-useful-text-formulas-power-query-edition/
@@ -1151,8 +1158,51 @@ in
     #"Added Custom"
 ```
 
-### GENERAL
 
-###### CUMULATIVE
-Add index
-List.Sum(List.FirstN(Added_Index[CREATED],[Index])))
+
+# JIRA
+###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
+-------------------------
+
+```VBA GetDataListRecordToTable
+
+(startAt as number) as list  =>
+let StartURL = "HTTPS://education-nz.atlassian.net/rest/api/3/search?jql=project=HAS&maxResults=100&startAt=",
+source = Json.Document(Web.Contents( StartURL & Number.ToText(startAt) )) [issues] 
+in  source
+```
+
+```VBA ListGenerate
+
+ ListGenerate = List.Generate( () =>
+       [Result= try GetDataListRecordToTable(1) otherwise null, startAt = 0], 
+       each not List.IsEmpty([Result]),
+       each [Result = try GetDataListRecordToTable([startAt]+100) otherwise null, 
+       startAt =[startAt]+100], each [Result]),
+
+    ToTable = Table.Buffer(Table.FromList(ListGenerate, Splitter.SplitByNothing(), null, null, ExtraValues.Error)),
+    ExpandTable = Table.ExpandListColumn(ToTable, "Column1"),
+
+    ExpandRecords = Table.ExpandRecordColumn(ExpandTable, "Column1", {"key", "fields"}, {"key", "fields"}),
+    ExpandedFields = Table.Buffer(Table.ExpandRecordColumn(ExpandRecords, "fields", 
+{"created",  "creator", "assignee", "resolution", "customfield_10714","customfield_10709","customfield_10091", "customfield_10763", "customfield_10758", "customfield_10760", "customfield_10765","customfield_10266"},
+{"created",  "creator", "assignee", "resolution", "Employee type",    "Type of Injury"   ,"Business Group and Unit", "Nature of Injury", "Primary cause", "Incident Location", "Permission to Share","Office
+"})),
+    #"Sorted Rows" = Table.Sort(ExpandedFields,{{"created", Order.Ascending}}),
+    ExpandedCreator = Table.ExpandRecordColumn(#"Sorted Rows", "creator", {"displayName"}, {"Creator"}),
+    ExpandedAssignee = Table.ExpandRecordColumn(ExpandedCreator, "assignee", {"displayName"}, {"Assignee"}),
+    ExpandedResolution = Table.ExpandRecordColumn(ExpandedAssignee, "resolution", {"name"}, {"Resolution"}),
+    ExpandedEmployeeType = Table.ExpandRecordColumn(ExpandedResolution, "Employee type", {"value"}, {"Employee Type"}),
+    ExpandedBusinessGroup = Table.ExpandRecordColumn(ExpandedEmployeeType, "Business Group and Unit", {"value"}, {"Business Group"}),
+    ExpandedInjuryNature = Table.ExpandRecordColumn(Table.ExpandListColumn(ExpandedBusinessGroup, "Nature of Injury"), "Nature of Injury", {"value"}, {"Nature of Injury"}),
+    ExpandedPrimaryCause = Table.ExpandRecordColumn(ExpandedInjuryNature, "Primary cause", {"value"}, {"Primary Cause"}),
+    ExpandedIncidentLocation = Table.ExpandRecordColumn(ExpandedPrimaryCause, "Incident Location", {"value"}, {"Incident Location"}),
+    ExpandedPermissionShare = Table.ExpandRecordColumn(ExpandedIncidentLocation, "Permission to Share", {"value"}, {"Permission"}),
+    ExpandedOffice = Table.ExpandRecordColumn(ExpandedPermissionShare, "Office#(cr)#(lf)", {"value"}, {"Office"}),
+    ExpandedTypeInjury = Table.ExpandRecordColumn(Table.ExpandListColumn(ExpandedOffice, "Type of Injury"), "Type of Injury", {"value"}, {"Injury Type"}),
+    ChangedTimeZone = Table.TransformColumnTypes(ExpandedTypeInjury,{{"created", type datetimezone}}),
+    ChangedType = Table.TransformColumnTypes(ChangedTimeZone,{{"created", type date}})
+in
+    ChangedType
+
+```
