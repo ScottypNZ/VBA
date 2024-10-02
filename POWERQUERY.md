@@ -7,7 +7,7 @@
  * [MARITIME](#MARITIME)
  * [MOE](#MOE)
  * [JIRA](#JIRA)
- 
+ * [FTE](#FTE)
 
 
 
@@ -1205,4 +1205,94 @@ in  source
 in
     ChangedType
 
+```
+
+
+# FTE
+###### [LIBRARY](https://github.com/ScottypNZ/CODE-LIBRARY)   |   [INDEX](#INDEX)
+-------------------------
+
+
+###### FTE Data All Staff
+
+```vba 
+
+let
+  Source = #"_ALL Staff",
+  Type = Table.TransformColumnTypes(Source, {{"As of", type date}, {"FTE", type number}, {"Position code", Int64.Type}}),
+  Exclude = Table.SelectRows(Type, each [FILTER] = "true"),
+  Date = Table.SelectRows(Exclude, each [As of] > #date(2023, 7, 30)),
+  BG = Table.SelectRows(Date, each ([Business Group] <> "" and [Business Group] <> "Central Funding" and [Business Group] <> "Charter School Agency")),
+  Removed = Table.SelectColumns(BG, {"As of", "Position code", "FTE", "Business Group"}),
+  // External secondment paid is part of FTE but doesnt have a position code. A proxy code of 999999 is applied. However this creates a one to many relation which stops a later look up from working. To counter this data is grouped by BG, Month & position, with the FTE being summed.
+  #"---STEP1---" = Removed,
+  Replaced = Table.ReplaceValue(#"---STEP1---", null, 999999, Replacer.ReplaceValue, {"Position code"}),
+  Grouped = Table.Group(Replaced, {"As of", "Position code", "Business Group"}, {{"FTE SUM", each List.Sum([FTE]), type nullable number}}),
+  #"Sorted rows" = Table.Sort(Grouped, {{"Position code", Order.Descending}}),
+  // In the all staff report where an individual is not in a position for a month the data is blank (vs position which shows vacant/empty). This means that a look up to the previous month is inaccurate. i.e. if there is no data for February, March will lookup to Jan which is incorrect. To avoid this the date is pivoted which populates blank months (as null which is then replaced with a zero).
+  #"---STEP2---" = #"Sorted rows",
+  Pivot = Table.Pivot(Table.TransformColumnTypes(#"---STEP2---", {{"As of", type text}}, "en-NZ"), List.Distinct(Table.TransformColumnTypes(#"---STEP2---", {{"As of", type text}}, "en-NZ")[As of]), "As of", "FTE SUM", List.Sum),
+  Replaced2 = Table.ReplaceValue(Pivot, null, 0, Replacer.ReplaceValue, {"31/08/2024", "31/07/2024", "30/06/2024", "31/05/2024", "30/04/2024", "31/03/2024", "29/02/2024", "31/01/2024", "31/12/2023", "30/11/2023", "31/10/2023", "30/09/2023", "31/08/2023"}),
+  Unpivot = Table.UnpivotOtherColumns(Replaced2, {"Position code", "Business Group"}, "As of", "FTE"),
+  // Data is grouped by month and two index columns are created. One starting from 0 and one starting from 1. This allows a lookup to the previous value in Power Query in step 4.
+  #"---STEP3---" = Unpivot,
+  Grouped1 = Table.Group(#"---STEP3---", {"As of"}, {{"ALL", each _, type nullable table[#"Position code" = nullable number, #"Business Group" = nullable text, #"As of" = date, FTE = number]}}),
+  Type1 = Table.TransformColumnTypes(Grouped1, {{"As of", type date}}),
+  Sorted = Table.Sort(Type1, {{"As of", Order.Ascending}}),
+  Index0a = Table.AddIndexColumn(Sorted, "Index0", 0, 1, Int64.Type),
+  Index1a = Table.AddIndexColumn(Index0a, "Index1", 1, 1, Int64.Type),
+  Expand = Table.ExpandTableColumn(Index1a, "ALL", {"Business Group", "Position code", "FTE"}, {"Business Group", "Position code", "FTE"}),
+  #"Sorted rows 2" = Table.Sort(Expand, {{"Position code", Order.Descending}, {"Business Group", Order.Descending}, {"As of", Order.Descending}}),
+  // Step 4 merges the query with itself to look up the previous value.
+  // 
+  // {"Business Group", "Position code", "Index0"} vs
+  // {"Business Group", "Position code", "Index1"}
+  #"---STEP4---" = #"Sorted rows 2",
+
+
+  Merge = Table.NestedJoin(#"---STEP4---", {"Business Group", "Position code", "Index0"}, #"---STEP4---", {"Business Group", "Position code", "Index1"}, "Join", JoinKind.LeftOuter),
+  Expand2 = Table.ExpandTableColumn(Merge, "Join", {"As of", "FTE"}, {"As of Open", "FTE Open"}),
+  Sorted1 = Table.Sort(Expand2, {{"Position code", Order.Ascending}, {"As of Open", Order.Ascending}}),
+  Removed3 = Table.RemoveColumns(Sorted1, {"Index0", "Index1"}),
+  // Step 5 adds calculated columns to look up the previous months value and categorizes this as FTE increase, decrease, hire or termination. Note step 6 is in a separate query. This is so the working can be investigated if needed.
+  #"---STEP5---" = Removed3,
+  Renamed = Table.RenameColumns(#"---STEP5---", {{"FTE", "FTE Close"}, {"As of", "As of Close"}}),
+  Null = Table.SelectRows(Renamed, each ([As of Open] <> null)),
+  Added_Custom = Table.AddColumn(Null, "Custom", each if [FTE Open] = [FTE Close] then "Static" else 
+if [FTE Open] = 0 and [FTE Close] <> 0 then "Hire" else 
+if [FTE Open] <> 0 and [FTE Close] = 0 then "Exit" else 
+if [FTE Open] < [FTE Close] then "Increase" else 
+if [FTE Open] > [FTE Close] then "Decrease" else 
+"x", type text),
+  Added_Calc = Table.AddColumn(Added_Custom, "Calc", each 
+if [Custom] = "Increase" then  [FTE Close] - [FTE Open]  else
+if [Custom] = "Decrease" then  [FTE Open]*-1  + [FTE Close] else
+if [Custom] = "Hire" then  [FTE Close] - [FTE Open]      else
+if [Custom] = "Exit" then  [FTE Close] - [FTE Open]      else
+000, type number),
+  Reordered1 = Table.ReorderColumns(Added_Calc, { "Business Group", "Position code", "As of Open", "FTE Open", "FTE Close", "Calc", "As of Close", "Custom"}),
+  #"Sorted rows 1" = Table.Sort(Reordered1, {{"Position code", Order.Descending}, {"Business Group", Order.Descending}})
+in
+  #"Sorted rows 1"
+```
+
+
+###### FTE grp All Staff
+
+```vba 
+let
+  Source = #"FTE Data All Staff",
+  // The calculated column created in previous step is pivoted horizontally, with any null values replaced with 0.
+  #"---STEP6---" = Source,
+  #"Pivoted column" = Table.Pivot(Table.TransformColumnTypes(#"---STEP6---", {{"Custom", type text}}), List.Distinct(Table.TransformColumnTypes(#"---STEP6---", {{"Custom", type text}})[Custom]), "Custom", "Calc", List.Sum),
+  #"Removed columns" = Table.RemoveColumns(#"Pivoted column", {"Static"}),
+  #"Replaced value" = Table.ReplaceValue(#"Removed columns", null, 0, Replacer.ReplaceValue, {"Decrease", "Exit", "Hire", "Increase"}),
+  // Data is then grouped by business group and month leaving six numerical columns. Opening FTE, Hires, Terminations, FTE increases, FTE decreases and closing FTE
+  #"---STEP7---" = #"Replaced value",
+  #"Grouped rows" = Table.Group(#"---STEP7---", {"Business Group", "As of Open", "As of Close"}, {{"FTE Open", each List.Sum([FTE Open]), type nullable number}, {"FTE Close", each List.Sum([FTE Close]), type nullable number}, {"Hire", each List.Sum([Hire]), type nullable number}, {"Exit", each List.Sum([Exit]), type nullable number}, {"Increase", each List.Sum([Increase]), type nullable number}, {"Decrease", each List.Sum([Decrease]), type nullable number}}),
+  #"Reordered columns" = Table.ReorderColumns(#"Grouped rows", {"Business Group", "As of Open", "FTE Open", "Hire", "Exit", "Increase", "Decrease", "FTE Close", "As of Close"}),
+  #"Filtered rows" = Table.SelectRows(#"Reordered columns", each ([As of Open] <> #date(2023, 7, 31))),
+  #"Renamed columns" = Table.RenameColumns(#"Filtered rows", {{"Hire", "FTE in"}, {"Exit", "FTE out"}})
+in
+  #"Renamed columns"
 ```
